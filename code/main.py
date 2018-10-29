@@ -34,13 +34,14 @@ Options:
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
     --dropout=<float>                       dropout [default: 0.1]
     --data=<str>                            type of dataset [default: quora]
+    --perspective=<int>                     number of perspectives for the model [default: 1]
     --char                                  whether to use character embeddings or not, default is true [default: True]
 """
 
 from docopt import docopt
 from pdb import set_trace as bp
 from vocab import Vocab
-from bimpm import BiMPM
+from models.model import Model
 import utils
 import pymagnitude
 
@@ -53,7 +54,7 @@ def train(args):
         train_data = utils.read_data(train_path, 'quora')
         dev_data = utils.read_data(dev_path, 'quora')
         vocab_data = utils.load_vocab(vocab_path)
-        network = BiMPM(args, vocab_data)
+        network = Model(args, vocab_data)
         network.set_labels(2)
 
     epoch = 0
