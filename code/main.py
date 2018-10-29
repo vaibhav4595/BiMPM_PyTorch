@@ -20,9 +20,13 @@ Options:
     --glove-path=<file>                     pretrained glove embedding file [default: ../data/glove/glove.840B.300d.magnitude]
     --seed=<int>                            seed [default: 0]
     --batch-size=<int>                      batch size [default: 32]
+    --rnn-type=<str>                        type of rnn (lstm, gru, rnn) [default: lstm]
     --embed-size=<int>                      embedding size [default: 300]
     --char-embed-size=<int>                 char embedding size [default: 20]
     --bi-hidden-size=<int>                  bidirectional lstm hidden size [default: 100]
+    --char-hidden-size=<int>                character lstm hidden size [default: 50]
+    --char-lstm-layers=<int>                number of layers in character lstm [default: 1]
+    --bilstm-layers=<int>                   number of layers in bidi lstm [default: 1]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
     --log-every=<int>                       log every [default: 10]
     --max-epoch=<int>                       max epoch [default: 50]
@@ -34,7 +38,7 @@ Options:
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
     --dropout=<float>                       dropout [default: 0.1]
     --data=<str>                            type of dataset [default: quora]
-    --perspective=<int>                     number of perspectives for the model [default: 1]
+    --perspective=<int>                     number of perspectives for the model [default: 20]
     --char                                  whether to use character embeddings or not, default is true [default: True]
 """
 
@@ -54,8 +58,7 @@ def train(args):
         train_data = utils.read_data(train_path, 'quora')
         dev_data = utils.read_data(dev_path, 'quora')
         vocab_data = utils.load_vocab(vocab_path)
-        network = Model(args, vocab_data)
-        network.set_labels(2)
+        network = Model(args, vocab_data, 2)
 
     epoch = 0
     batch_size = int(args['--batch-size'])

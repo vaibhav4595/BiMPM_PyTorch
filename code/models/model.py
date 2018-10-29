@@ -2,10 +2,11 @@ import pymagnitude
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from pdb import set_trace as bp
+from models.bimpm import BiMPM
 
 
 class Model(object):
-    def __init__(self, args, vocab_data):
+    def __init__(self, args, vocab_data, class_size):
         self.data = args['--data']
         self.char_use = True
         self.cembed_size = int(args['--char-embed-size'])
@@ -13,7 +14,9 @@ class Model(object):
         self.perspec = int(args['--perspective'])
         self.cuda = args['--cuda']
         self.vocab = vocab_data
+        self.vocab_len = len(vocab_data.char2index)
         self.wembeddings = pymagnitude.Magnitude(args['--glove-path'])
+        self.model = BiMPM(args, self.vocab_len, class_size)
 
     def forward(self, label, p1, p2):
         word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor =\
