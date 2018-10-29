@@ -39,7 +39,7 @@ Options:
     --dropout=<float>                       dropout [default: 0.1]
     --data=<str>                            type of dataset [default: quora]
     --perspective=<int>                     number of perspectives for the model [default: 20]
-    --char                                  whether to use character embeddings or not, default is true [default: True]
+    --char=<bool>                           whether to use character embeddings or not, default is true [default: True]
 """
 
 from docopt import docopt
@@ -84,7 +84,6 @@ def train(args):
             train_iter += 1
 
             iter_loss = network.forward(labels, p1, p2)
-            bp()
             report_loss += iter_loss.item()
             cum_loss += iter_loss.item()
 

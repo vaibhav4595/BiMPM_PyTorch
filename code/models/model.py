@@ -17,36 +17,38 @@ class Model(object):
         self.vocab_len = len(vocab_data.char2index)
         self.wembeddings = pymagnitude.Magnitude(args['--glove-path'])
         self.model = BiMPM(args, self.vocab_len, class_size)
+        self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, label, p1, p2):
         word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor =\
                 self.format_data(label, p1, p2)
         label_tensor = label_tensor.unsqueeze(1)
-
+        loss = self.model(word_tensor1, word_tensor2, char_tensor1, char_tensor2) 
         return "hello"
 
     def format_data(self, label, p1, p2):
         word_p1_inp = []
         maxp1 = 0
-        
+        p1_orig_length = []        
         # Construct GloVe for each word, and find max word length (for one sentence)
         for each in p1:
-            word_p1_inp.append(torch.FloatTensor(self.wembeddings.query(each)))
+            p1_orig_length.append(len(each))
+            word_p1_inp.append(torch.Tensor(self.wembeddings.query(each)))
             for word in each:
                 maxp1 = max(maxp1, len(word))
 
         word_p2_inp = []
         maxp2 = 0
-
+        p2_orig_length = []
         # Construct GloVe for each word, and find max word length (for other sentence)
         for each in p2:
-            word_p2_inp.append(torch.FloatTensor(self.wembeddings.query(each)))
+            p2_orig_length.append(len(each))
+            word_p2_inp.append(torch.Tensor(self.wembeddings.query(each)))
             for word in each:
                 maxp2 = max(maxp2, len(word))
 
         word_p1_inp = pad_sequence(word_p1_inp)
         word_p2_inp = pad_sequence(word_p2_inp)
-
         char_p1_inp = []
         char_p2_inp = []
 
@@ -57,7 +59,7 @@ class Model(object):
                 word_arr = [self.vocab.char2id(char) for char in word]
                 word_arr = word_arr + [0] * (maxp1 - len(word))
                 sent_arr.append(word_arr)
-            char_p1_inp.append(torch.FloatTensor(sent_arr))
+            char_p1_inp.append(torch.LongTensor(sent_arr))
 
         # Intiliase character indices for each word of the sentence2
         for sent in p2:
@@ -66,10 +68,13 @@ class Model(object):
                 word_arr = [self.vocab.char2id(char) for char in word]
                 word_arr = word_arr + [0] * (maxp2 - len(word))
                 sent_arr.append(word_arr)
-            char_p2_inp.append(torch.FloatTensor(sent_arr))
+            char_p2_inp.append(torch.LongTensor(sent_arr))
 
         char_p1_inp = pad_sequence(char_p1_inp)
+        char_p1_inp = char_p1_inp.view(-1, maxp1).t()
+
         char_p2_inp = pad_sequence(char_p2_inp)
+        char_p2_inp = char_p2_inp.view(-1, maxp2).t()
 
         # Initiliase label tensor
         label = torch.FloatTensor([int(each) for each in label])
