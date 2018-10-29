@@ -40,5 +40,3 @@ class BiMPM(nn.Module):
 
         self.ff1 = nn.Linear(self.bi_hidden * 4, self.bi_hidden * 2)
         self.ff2 = nn.Linear(self.bi_hidden * 2, self.classes)
-
-        bp()        

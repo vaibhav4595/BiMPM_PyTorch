@@ -23,8 +23,6 @@ class Model(object):
                 self.format_data(label, p1, p2)
         label_tensor = label_tensor.unsqueeze(1)
 
-        bp()
-
     def format_data(self, label, p1, p2):
         word_p1_inp = []
         maxp1 = 0
