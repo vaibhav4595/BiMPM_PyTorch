@@ -96,12 +96,14 @@ def train(args):
             cum_examples += batch_size
 
             if train_iter % log_every == 0:
-                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\                       (epoch, train_iter, rep_loss / rep_examples, cum_examples, time.time() - begin_time, file=sys.stderr)
+                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\
+                     (epoch, train_iter, rep_loss / rep_examples, cum_examples, time.time() - begin_time), file=sys.stderr)
 
                 rep_loss, rep_examples = 0, 0
 
             if train_iter % valid_iter == 0:
-                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\                       (epoch, train_iter, cum_loss / cum_examples, cum_examples, time.time() - begin_time, file=sys.stderr)
+                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\
+                     (epoch, train_iter, cum_loss / cum_examples, cum_examples, time.time() - begin_time), file=sys.stderr)
 
                 cum_loss, cum_examples = 0
                 print('Begin Validation .. ', file=sys.stderr)
