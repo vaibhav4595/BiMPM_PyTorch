@@ -20,10 +20,11 @@ class Model(object):
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def forward(self, label, p1, p2):
-        word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor =\
-                self.format_data(label, p1, p2)
+        word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor,\
+                p1_orig_len, p2_orig_len = self.format_data(label, p1, p2)
         label_tensor = label_tensor.unsqueeze(1)
-        loss = self.model(word_tensor1, word_tensor2, char_tensor1, char_tensor2) 
+        predicted = self.model(word_tensor1, word_tensor2, char_tensor1, char_tensor2,\
+                          p1_orig_len, p2_orig_len) 
         return "hello"
 
     def format_data(self, label, p1, p2):
@@ -79,7 +80,8 @@ class Model(object):
         # Initiliase label tensor
         label = torch.FloatTensor([int(each) for each in label])
 
-        return (word_p1_inp, word_p2_inp, char_p1_inp, char_p2_inp, label)
+        return (word_p1_inp, word_p2_inp, char_p1_inp, char_p2_inp, label,\
+                p1_orig_length, p2_orig_length)
 
     def set_labels(self, value):
         self.classes = value
