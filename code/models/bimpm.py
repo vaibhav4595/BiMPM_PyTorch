@@ -77,7 +77,7 @@ class BiMPM(nn.Module):
         p2 = torch.stack([p2] * p1_seq_len, dim = 0)
         p2 = torch.stack([p2] * self.l, dim = 3)
         p2 = w_matrix * p2
-        result = F.cosine_similarity(p1, p2)
+        result = F.cosine_similarity(p1, p2, dim=2)
         return result
 
     def maxpool_matching(self, p1, p2, w_matrix):
@@ -97,11 +97,32 @@ class BiMPM(nn.Module):
         result = result.permute(2, 0, 1)
         return result
 
-    def attentive_matching(self):
-        return None
+    def attentive_matching(self, p1, p2, w_matrix_att, w_matrix_max):
+        #Perform both attentive types of matching together
+        p1_norm = p1.norm(p = 2, dim = 2, keepdim=True)
+        p2_norm = p2.norm(p = 2, dim = 2, keepdim=True)
 
-    def max_attentive_matching(self):
-        return None
+        full_mat = torch.matmul(p1.permute(1,0,2), p2.permute(1, 2, 0))
+        deno_mat = torch.matmul(p1_norm.permute(1, 0, 2), p2_norm.permute(1, 2, 0))
+        alpha_mat = self.cosine_similarity(full_mat, deno_mat)
+
+        _, max_index = torch.max(alpha_mat, dim=2)
+        max_index = torch.stack([max_index] * self.bi_hidden, dim=2)
+        
+        h_mat = torch.bmm(alpha_mat, p2.transpose(1, 0))
+        alpha_mat = alpha_mat.sum(dim=2, keepdim=True)
+        resultant = h_mat / alpha_mat
+
+        v1 = resultant.transpose(1, 0).unsqueeze(-1) * w_matrix_att
+        v2 = p1.unsqueeze(-1) * w_matrix_att
+        result_match = F.cosine_similarity(v1, v2, dim=2)
+
+        out_mat = torch.gather(p2.transpose(1, 0), 1, max_index)
+        v1 = out_mat.transpose(1, 0).unsqueeze(-1) * w_matrix_max
+        v2 = p1.unsqueeze(-1) * w_matrix_max
+        result_max = F.cosine_similarity(v1, v2, dim=2)
+        
+        return result_match, result_max
 
     def forward(self, p1, p2, c1, c2, p1_len, p2_len):
 
@@ -138,4 +159,11 @@ class BiMPM(nn.Module):
         maxm_p1_back = self.maxpool_matching(context1_back, context2_back, self.w4)
         maxm_p2_forw = self.maxpool_matching(context2_forw, context1_forw, self.w3)
         maxm_p2_back = self.maxpool_matching(context2_back, context1_back, self.w4)
+
+        # 8 tensors from the forward and backward attentive matching and attentive max
+        att_p1_forw, attm_p1_forw = self.attentive_matching(context1_forw, context2_forw, self.w5, self.w7)
+        att_p1_back, attm_p1_back = self.attentive_matching(context1_back, context2_back, self.w6, self.w8)
+        att_p2_forw, attm_p2_forw = self.attentive_matching(context2_forw, context1_forw, self.w5, self.w7)
+        att_p2_back, attm_p2_back = self.attentive_matching(context2_back, context1_back, self.w6, self.w8)
+        bp()
         return None
