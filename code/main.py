@@ -12,7 +12,7 @@ Usage:
 
 Options:
     -h --help                               show this screen.
-    --cuda                                  use GPU
+    --cuda=<bool>                           use GPU [default: False]
     --train-src=<file>                      train source file [default: ../data/quora/train_small.tsv]
     --dev-src=<file>                        dev source file [default: ../data/quora/dev_small.tsv]
     --test-src=<file>                       test source file [default: ../data/quora/test.tsv]
@@ -84,6 +84,7 @@ def train(args):
             train_iter += 1
 
             iter_loss = network.forward(labels, p1, p2)
+            bp()
             report_loss += iter_loss.item()
             cum_loss += iter_loss.item()
 

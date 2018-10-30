@@ -11,7 +11,7 @@ class BiMPM(nn.Module):
         self.c_embed_size = int(args['--char-embed-size'])
         self.w_embed_size = int(args['--embed-size'])
         self.l = int(args['--perspective'])
-        self.dropout = float(args['--dropout'])
+        self.dropout_val = float(args['--dropout'])
         self.bi_hidden = int(args['--bi-hidden-size'])
         self.char_hidden = int(args['--char-hidden-size'])
         self.rnn_type = args['--rnn-type']
@@ -21,6 +21,8 @@ class BiMPM(nn.Module):
         self.classes = class_size
         self.char_use = args['--char']
 
+        self.dropout = nn.Dropout(self.dropout_val)
+
         if self.char_use:
             self.char_embedding = nn.Embedding(num_embeddings=self.char_inp,\
                                                embedding_dim=self.c_embed_size,\
@@ -28,24 +30,28 @@ class BiMPM(nn.Module):
 
             self.char_lstm = nn.LSTM(input_size=self.c_embed_size,\
                                      hidden_size=self.char_hidden,\
-                                     num_layers=self.char_layer_size)
+                                     num_layers=self.char_layer_size,\
+                                     dropout=self.dropout_val)
 
             self.context_lstm = nn.LSTM(input_size=self.w_embed_size + self.char_hidden,\
                                         hidden_size=self.bi_hidden,\
                                         num_layers=self.context_layer_size,\
-                                        bidirectional=True)
+                                        bidirectional=True,\
+                                        dropout=self.dropout_val)
 
         else:
             self.context_lstm = nn.LSTM(input_size=self.w_embed_size,\
                                         hidden_size=self.bi_hidden,\
                                         num_layers=self.context_layer_size,\
-                                        bidirectional=True)
+                                        bidirectional=True,\
+                                        dropout=self.dropout_val)
 
 
 
         self.aggregation_lstm = nn.LSTM(input_size = self.l * 8,
                                         hidden_size = self.bi_hidden,\
-                                        bidirectional=True )
+                                        bidirectional=True,\
+                                        dropout=self.dropout_val)
 
 
         for i in range(1, 9):
@@ -173,11 +179,18 @@ class BiMPM(nn.Module):
         aggr_p2 = torch.cat([match_p2_forw, match_p2_back, maxm_p2_forw, maxm_p2_back,\
                              att_p2_forw, att_p2_back, attm_p2_forw, attm_p2_back], dim=2)
 
+        aggr_p1 = self.dropout(aggr_p1)
+        aggr_p2 = self.dropout(aggr_p2)
+
         _, (p1_output, _) = self.aggregation_lstm(aggr_p1)
         _, (p2_output, _) = self.aggregation_lstm(aggr_p2)
 
         output = torch.cat([torch.cat([p1_output[0,:,:], p1_output[1,:,:]], dim=-1), \
                            torch.cat([p2_output[0,:,:], p2_output[1,:,:]], dim=-1)], dim=-1)
-        output = F.tanh(self.ff1(output))
+
+        output = self.dropout(output)
+        output = torch.tanh(self.ff1(output))
+        output = self.dropout(output)
         output = self.ff2(output)
+
         return output
