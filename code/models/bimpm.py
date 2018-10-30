@@ -43,8 +43,9 @@ class BiMPM(nn.Module):
 
 
 
-        self.aggregation_lstm = nn.LSTM(input_size = self.l,
-                                         hidden_size = self.bi_hidden)
+        self.aggregation_lstm = nn.LSTM(input_size = self.l * 8,
+                                        hidden_size = self.bi_hidden,\
+                                        bidirectional=True )
 
 
         for i in range(1, 9):
@@ -165,5 +166,18 @@ class BiMPM(nn.Module):
         att_p1_back, attm_p1_back = self.attentive_matching(context1_back, context2_back, self.w6, self.w8)
         att_p2_forw, attm_p2_forw = self.attentive_matching(context2_forw, context1_forw, self.w5, self.w7)
         att_p2_back, attm_p2_back = self.attentive_matching(context2_back, context1_back, self.w6, self.w8)
-        bp()
-        return None
+
+        aggr_p1 = torch.cat([match_p1_forw, match_p1_back, maxm_p1_forw, maxm_p1_back,\
+                             att_p1_forw, att_p1_back, attm_p1_forw, attm_p1_back], dim=2)
+
+        aggr_p2 = torch.cat([match_p2_forw, match_p2_back, maxm_p2_forw, maxm_p2_back,\
+                             att_p2_forw, att_p2_back, attm_p2_forw, attm_p2_back], dim=2)
+
+        _, (p1_output, _) = self.aggregation_lstm(aggr_p1)
+        _, (p2_output, _) = self.aggregation_lstm(aggr_p2)
+
+        output = torch.cat([torch.cat([p1_output[0,:,:], p1_output[1,:,:]], dim=-1), \
+                           torch.cat([p2_output[0,:,:], p2_output[1,:,:]], dim=-1)], dim=-1)
+        output = F.tanh(self.ff1(output))
+        output = self.ff2(output)
+        return output
