@@ -5,8 +5,8 @@ Implementation of Bilateral Multi Perspective Matching in PyTorch
 
 Usage:
     main.py vocab
-    main.py train
-    main.py test
+    main.py train [options]
+    main.py test  [options]
     main.py train --train-src=<file> --dev-src=<file> --vocab-src=<file> [options]
     main.py test --test-src=<file> --vocab-src=<file> MODEL_PATH [options] 
 
@@ -74,6 +74,10 @@ def train(args):
         vocab_data = utils.load_vocab(vocab_path)
         network = Model(args, vocab_data, 2)
 
+    bp()
+    if args['--cuda'] == True:
+        network.model.cuda()
+
     epoch = 0
     train_iter = 0
     report_loss = 0
@@ -127,7 +131,7 @@ def train(args):
                     pred, _ = network.forward(val_labels, valp1, valp2)
                     pred = softmax(pred)
                     _, pred = pred.max(dim=1)
-                    label_cor = torch.LongTensor(network.get_label(val_labels))
+                    label_cor = network.get_label(val_labels)
                     total_correct += (pred == label_cor).sum().float()
                 final_acc = total_correct / total_examples
  
@@ -154,6 +158,9 @@ def train(args):
                         print('load previously best model and decay learning rate to %f' %(lr), file=sys.stderr)
 
                         network.model = torch.load(model_path)
+                        if args['--cuda'] == True:
+                            network.model.cuda()
+
                         print('restore parameters of the optimizers', file=sys.stderr)
                         optimiser = torch.optim.Adam(list(network.model.parameters()), lr=lr)
                         optimiser.load_state_dict(torch.load(optim_path))
@@ -179,18 +186,23 @@ def test(args):
     total_correct = 0
     vocab_path = args['--vocab-src'] 
     softmax = torch.nn.Softmax(dim=1)
+
     if args['--data'] == 'quora':
         test_data = utils.read_data(test_path, 'quora')
         vocab_data = utils.load_vocab(vocab_path)
         network = Model(args, vocab_data, 2)
         network.model = torch.load(model_path)
 
+    if args['--cuda'] == True:
+        network.model.cuda()
+        softmax.cuda()
+
     for labels, p1, p2, idx in utils.batch_iter(test_data, batch_size):
         total_examples += len(labels)
         pred, _ = network.forward(labels, p1, p2)
         pred = softmax(pred)
         _, pred = pred.max(dim=1)
-        label = torch.LongTensor(network.get_label(labels))
+        label = network.get_label(labels)
         total_correct += (pred == label).sum().float()
     final_acc = total_correct / total_examples
     print('Accuracy of the model is %.2f' % (final_acc), file=sys.stderr)

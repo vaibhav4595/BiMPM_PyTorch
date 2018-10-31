@@ -19,10 +19,23 @@ class Model(object):
         self.model = BiMPM(args, self.vocab_len, class_size)
         self.criterion = torch.nn.CrossEntropyLoss()
 
+        if self.cuda == True:
+            self.criterion.cuda()
+
     def forward(self, label, p1, p2, method='train'):
         word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor,\
                 p1_orig_len, p2_orig_len = self.format_data(label, p1, p2)
         label_tensor = label_tensor
+        bp()        
+        if self.cuda == True:
+            word_tensor1.cuda()
+            word_tensor2.cuda()
+            char_tensor1.cuda()
+            char_tensor2.cuda()
+            label_tensor.cuda()
+            p1_orig_len.cuda()
+            p2_orig_len.cuda()
+
         predicted = self.model(word_tensor1, word_tensor2, char_tensor1, char_tensor2,\
                           p1_orig_len, p2_orig_len)
         loss = self.criterion(predicted, label_tensor)
@@ -92,4 +105,7 @@ class Model(object):
 
     def get_label(self, label):
         label = [int(each) for each in label]
-        return label
+        if self.cuda:
+            return torch.LongTensor(label).cuda()
+        else:
+            return torch.LongTensor(label)
