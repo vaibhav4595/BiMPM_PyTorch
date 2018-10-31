@@ -26,7 +26,6 @@ class Model(object):
         word_tensor1, word_tensor2, char_tensor1, char_tensor2, label_tensor,\
                 p1_orig_len, p2_orig_len = self.format_data(label, p1, p2)
         label_tensor = label_tensor
-        bp()        
         if self.cuda == True:
             word_tensor1.cuda()
             word_tensor2.cuda()

@@ -74,7 +74,6 @@ def train(args):
         vocab_data = utils.load_vocab(vocab_path)
         network = Model(args, vocab_data, 2)
 
-    bp()
     if args['--cuda'] == True:
         network.model.cuda()
 
