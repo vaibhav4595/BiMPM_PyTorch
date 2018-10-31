@@ -25,7 +25,7 @@ def read_data(file_path, data_type):
 
         return corpus
     else:
-        return "hello"
+        return "Not Implemented the rest"
 
 def load_vocab(file_path):
     return pickle.load(open(file_path, 'rb'))

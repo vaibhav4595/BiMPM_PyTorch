@@ -15,8 +15,10 @@ Options:
     --cuda=<bool>                           use GPU [default: False]
     --train-src=<file>                      train source file [default: ../data/quora/train_small.tsv]
     --dev-src=<file>                        dev source file [default: ../data/quora/dev_small.tsv]
-    --test-src=<file>                       test source file [default: ../data/quora/test.tsv]
+    --test-src=<file>                       test source file [default: ../data/quora/test_small.tsv]
     --vocab-src=<file>                      vocab source file [default: ../data/quora/vocab.pkl]
+    --model-path=<file>                     model path [default: ../data/models/model.bin]
+    --optim-path=<file>                     optimiser state path [default: ../data/models/optim.bin]
     --glove-path=<file>                     pretrained glove embedding file [default: ../data/glove/glove.840B.300d.magnitude]
     --seed=<int>                            seed [default: 0]
     --batch-size=<int>                      batch size [default: 32]
@@ -28,14 +30,14 @@ Options:
     --char-lstm-layers=<int>                number of layers in character lstm [default: 1]
     --bilstm-layers=<int>                   number of layers in bidi lstm [default: 1]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
-    --log-every=<int>                       log every [default: 10]
+    --log-every=<int>                       log every [default: 2]
     --max-epoch=<int>                       max epoch [default: 50]
     --patience=<int>                        wait for how many iterations to decay learning rate [default: 5]
     --max-num-trial=<int>                   terminate training after how many trials [default: 5]
     --lr-decay=<float>                      learning rate decay [default: 0.5]
     --lr=<float>                            learning rate [default: 0.001]
     --save-to=<file>                        model save path
-    --valid-niter=<int>                     perform validation after how many iterations [default: 500]
+    --valid-niter=<int>                     perform validation after how many iterations [default: 5]
     --dropout=<float>                       dropout [default: 0.1]
     --data=<str>                            type of dataset [default: quora]
     --perspective=<int>                     number of perspectives for the model [default: 20]
@@ -59,6 +61,12 @@ def train(args):
     vocab_path = args['--vocab-src']
     lr = float(args['--lr'])
     log_every = int(args['--log-every'])
+    model_path = args['--model-path']
+    optim_path = args['--optim-path']
+    max_patience = int(args['--patience'])
+    max_num_trials = int(args['--max-num-trial'])
+    clip_grad = float(args['--clip-grad'])
+    valid_iter = int(args['--valid-niter'])
 
     if args['--data'] == 'quora':
         train_data = utils.read_data(train_path, 'quora')
@@ -76,6 +84,10 @@ def train(args):
     optimiser = torch.optim.Adam(list(network.model.parameters()), lr=lr)
     begin_time = time.time()
     prev_acc = 0
+    val_hist = []
+    num_trial = 0
+    softmax = torch.nn.Softmax(dim=1)
+
     while True:
         epoch += 1
         
@@ -83,40 +95,106 @@ def train(args):
             optimiser.zero_grad()
             train_iter += 1
 
-            iter_loss = network.forward(labels, p1, p2)
-            bp()
+            _, iter_loss = network.forward(labels, p1, p2)
             report_loss += iter_loss.item()
             cum_loss += iter_loss.item()
 
             iter_loss.backward()
-            nn.utils.clip_grad(list(network.model.parameters()))
+            nn.utils.clip_grad_norm(list(network.model.parameters()), clip_grad)
             optimiser.step()
  
             rep_examples += batch_size
             cum_examples += batch_size
 
             if train_iter % log_every == 0:
-                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\
-                     (epoch, train_iter, rep_loss / rep_examples, cum_examples, time.time() - begin_time), file=sys.stderr)
+                print('epoch %d, iter %d, avg. loss, %.4f, cum. examples %d, time elapsed %.2f' %\
+                     (epoch, train_iter, report_loss, cum_examples, time.time() - begin_time), file=sys.stderr)
 
-                rep_loss, rep_examples = 0, 0
+                report_loss, rep_examples = 0, 0
 
             if train_iter % valid_iter == 0:
-                print('epoch %d, iter %d, avg. loss, %.2f, cum. examples %d, time elapsed %.2f' %\
-                     (epoch, train_iter, cum_loss / cum_examples, cum_examples, time.time() - begin_time), file=sys.stderr)
+                print('epoch %d, iter %d, avg. loss, %.4f, cum. examples %d, time elapsed %.2f' %\
+                     (epoch, train_iter, cum_loss / train_iter, cum_examples, time.time() - begin_time), file=sys.stderr)
 
-                cum_loss, cum_examples = 0
+                cum_loss, cum_examples = 0, 0
                 print('Begin Validation .. ', file=sys.stderr)
+                network.model.eval()
+                total_examples = 0
+                total_correct = 0
+                val_loss, val_examples = 0, 0
+                for val_labels, valp1, valp2, idx in utils.batch_iter(dev_data, batch_size):
+                    total_examples += len(val_labels)
+                    pred, _ = network.forward(val_labels, valp1, valp2)
+                    pred = softmax(pred)
+                    _, pred = pred.max(dim=1)
+                    label_cor = torch.LongTensor(network.get_label(val_labels))
+                    total_correct += (pred == label_cor).sum().float()
+                final_acc = total_correct / total_examples
+ 
+                val_hist.append(final_acc) 
+                val_acc = final_acc
+                print('Validation: iter %d, val_acc %.4f' % (train_iter, val_acc), file=sys.stderr)
+                if val_acc > prev_acc:
+                    patience = 0
+                    prev_acc = val_acc
+                    print('Saving model and optimiser state', file=sys.stderr)
+                    torch.save(network.model, model_path)
+                    torch.save(optimiser.state_dict(), optim_path)
+                else:
+                    patience += 1
+                    print('hit patience %d' %(patience), file=sys.stderr)
+                    if patience == max_patience:
+                        num_trial += 1
+                        print('hit #%d' %(num_trial), file=sys.stderr)
+                        if num_trial == max_num_trials:
+                            print('early stop!', file=sys.stderr)
+                            exit(0)
 
-                acc = network.evaluate(dev_data, batch_size = 128)
-                print('Validation: iter %d, acc $.2f' % (train_iter, acc), file=sys.stderr)
-                if acc > prev_acc:
-                    prev_acc = acc
-                    # Save the model here
-                    # Write code for patience and other things to drop down the learning rate yada yada yada
+                        lr = lr * float(args['--lr-decay'])
+                        print('load previously best model and decay learning rate to %f' %(lr), file=sys.stderr)
 
-        break
-        
+                        network.model = torch.load(model_path)
+                        print('restore parameters of the optimizers', file=sys.stderr)
+                        optimiser = torch.optim.Adam(list(network.model.parameters()), lr=lr)
+                        optimiser.load_state_dict(torch.load(optim_path))
+                        for state in optimiser.state.values():
+                            for k, v in state.items():
+                                if isinstance(v, torch.Tensor):
+                                    state[k] = v
+                        for group in optimiser.param_groups:
+                            group['lr'] = lr
+
+                        patience = 0
+                network.model.train()
+
+        if epoch == int(args['--max-epoch']):
+            print('reached maximum number of epochs!', file=sys.stderr)
+            exit(0) 
+
+def test(args):
+    test_path = args['--test-src']
+    model_path = args['--model-path']
+    batch_size = int(args['--batch-size'])
+    total_examples = 0
+    total_correct = 0
+    vocab_path = args['--vocab-src'] 
+    softmax = torch.nn.Softmax(dim=1)
+    if args['--data'] == 'quora':
+        test_data = utils.read_data(test_path, 'quora')
+        vocab_data = utils.load_vocab(vocab_path)
+        network = Model(args, vocab_data, 2)
+        network.model = torch.load(model_path)
+
+    for labels, p1, p2, idx in utils.batch_iter(test_data, batch_size):
+        total_examples += len(labels)
+        pred, _ = network.forward(labels, p1, p2)
+        pred = softmax(pred)
+        _, pred = pred.max(dim=1)
+        label = torch.LongTensor(network.get_label(labels))
+        total_correct += (pred == label).sum().float()
+    final_acc = total_correct / total_examples
+    print('Accuracy of the model is %.2f' % (final_acc), file=sys.stderr)
+   
 def main(args):
     if args['train']:
         train(args)
