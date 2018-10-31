@@ -104,7 +104,7 @@ class Model(object):
 
     def get_label(self, label):
         label = [int(each) for each in label]
-        if self.cuda:
+        if self.cuda == True:
             return torch.LongTensor(label).cuda()
         else:
             return torch.LongTensor(label)
