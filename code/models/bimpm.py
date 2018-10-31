@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -60,7 +61,48 @@ class BiMPM(nn.Module):
         self.ff1 = nn.Linear(self.bi_hidden * 4, self.bi_hidden * 2)
         self.ff2 = nn.Linear(self.bi_hidden * 2, self.classes)
 
+        self.init_weights()
 
+    def init_weights(self):
+        if self.char_use:
+            nn.init.uniform_(self.char_embedding.weight, -0.005, 0.005)
+            nn.init.kaiming_normal_(self.char_lstm.weight_ih_l0)
+            nn.init.constant_(self.char_lstm.bias_ih_l0, val=0)
+            nn.init.orthogonal_(self.char_lstm.weight_hh_l0)
+            nn.init.constant_(self.char_lstm.bias_hh_l0, val=0)
+
+        nn.init.kaiming_normal_(self.context_lstm.weight_ih_l0)
+        nn.init.constant_(self.context_lstm.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.context_lstm.weight_hh_l0)
+        nn.init.constant_(self.context_lstm.bias_hh_l0, val=0)
+
+        nn.init.kaiming_normal_(self.context_lstm.weight_ih_l0_reverse)
+        nn.init.constant_(self.context_lstm.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.context_lstm.weight_hh_l0_reverse)
+        nn.init.constant_(self.context_lstm.bias_hh_l0_reverse, val=0)
+
+        for i in range(1, 9):
+            weight = getattr(self, f'w{i}')
+            nn.init.kaiming_normal_(weight)
+
+        nn.init.kaiming_normal_(self.aggregation_lstm.weight_ih_l0)
+        nn.init.constant_(self.aggregation_lstm.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0)
+        nn.init.constant_(self.aggregation_lstm.bias_hh_l0, val=0)
+
+        nn.init.kaiming_normal_(self.aggregation_lstm.weight_ih_l0_reverse)
+        nn.init.constant_(self.aggregation_lstm.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0_reverse)
+        nn.init.constant_(self.aggregation_lstm.bias_hh_l0_reverse, val=0)
+
+
+        root_bi = math.sqrt(self.bi_hidden * 4)
+        nn.init.uniform_(self.ff1.weight, -root_bi, root_bi)
+        nn.init.constant_(self.ff1.bias, val=0)
+        root_bi = math.sqrt(self.bi_hidden * 2)
+        nn.init.uniform_(self.ff2.weight, -root_bi, root_bi)
+        nn.init.constant_(self.ff2.bias, val=0)
+       
     def init_char_embed(self, c1, c2):
         c1_embed = self.char_embedding(c1)
         char_p1 = self.char_lstm(c1_embed)

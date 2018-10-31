@@ -100,7 +100,7 @@ def train(args):
             cum_loss += iter_loss.item()
 
             iter_loss.backward()
-            nn.utils.clip_grad_norm(list(network.model.parameters()), clip_grad)
+            nn.utils.clip_grad_norm_(list(network.model.parameters()), clip_grad)
             optimiser.step()
  
             rep_examples += batch_size
