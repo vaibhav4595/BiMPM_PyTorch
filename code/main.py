@@ -30,7 +30,7 @@ Options:
     --char-lstm-layers=<int>                number of layers in character lstm [default: 1]
     --bilstm-layers=<int>                   number of layers in bidi lstm [default: 1]
     --clip-grad=<float>                     gradient clipping [default: 5.0]
-    --log-every=<int>                       log every [default: 10]
+    --log-every=<int>                       log every [default: 20]
     --max-epoch=<int>                       max epoch [default: 50]
     --patience=<int>                        wait for how many iterations to decay learning rate [default: 5]
     --max-num-trial=<int>                   terminate training after how many trials [default: 5]
@@ -38,7 +38,7 @@ Options:
     --lr=<float>                            learning rate [default: 0.001]
     --save-to=<file>                        model save path
     --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
-    --dropout=<float>                       dropout [default: 0.1]
+    --dropout=<float>                       dropout [default: 0.2]
     --data=<str>                            type of dataset [default: quora]
     --perspective=<int>                     number of perspectives for the model [default: 20]
     --char=<bool>                           whether to use character embeddings or not, default is true [default: True]
@@ -196,6 +196,7 @@ def test(args):
         network.model.cuda()
         softmax.cuda()
 
+    network.model.eval()
     for labels, p1, p2, idx in utils.batch_iter(test_data, batch_size):
         total_examples += len(labels)
         pred, _ = network.forward(labels, p1, p2)
