@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # Data
-data/
+data/glove
 # Distribution / packaging
 .Python
 build/
