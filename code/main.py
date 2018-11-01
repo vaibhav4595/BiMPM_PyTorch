@@ -199,6 +199,7 @@ def test(args):
     network.model.eval()
     for labels, p1, p2, idx in utils.batch_iter(test_data, batch_size):
         total_examples += len(labels)
+        print(total_examples)
         pred, _ = network.forward(labels, p1, p2)
         pred = softmax(pred)
         _, pred = pred.max(dim=1)

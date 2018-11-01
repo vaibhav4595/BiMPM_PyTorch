@@ -26,7 +26,7 @@ class Vocab(object):
     def build_vocab(self, sents):
         self.counter = 0
         # 0 set for padding of characters
-        self.char_counter = 1
+        self.char_counter = 2
         for sent in tqdm(sents):
             for word in sent:
                 lowered_word = word.text.lower()
@@ -57,7 +57,7 @@ class Vocab(object):
         if char.lower() in self.char2index:
             return self.char2index[char.lower()]
         else:
-            return None
+            return 1
 
     def id2char(self, idx):
         if idx in self.index2char:
