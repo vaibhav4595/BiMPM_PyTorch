@@ -37,8 +37,8 @@ Options:
     --lr-decay=<float>                      learning rate decay [default: 0.5]
     --lr=<float>                            learning rate [default: 0.001]
     --save-to=<file>                        model save path
-    --valid-niter=<int>                     perform validation after how many iterations [default: 2000]
-    --dropout=<float>                       dropout [default: 0.2]
+    --valid-niter=<int>                     perform validation after how many iterations [default: 1600]
+    --dropout=<float>                       dropout [default: 0.3]
     --data=<str>                            type of dataset [default: quora]
     --perspective=<int>                     number of perspectives for the model [default: 20]
     --char=<bool>                           whether to use character embeddings or not, default is true [default: True]
@@ -74,8 +74,8 @@ def train(args):
         vocab_data = utils.load_vocab(vocab_path)
         network = Model(args, vocab_data, 2)
 
-    if args['--cuda'] == True:
-        network.model.cuda()
+    if args['--cuda'] == str(1):
+        network.model = network.model.cuda()
 
     epoch = 0
     train_iter = 0
@@ -90,6 +90,9 @@ def train(args):
     val_hist = []
     num_trial = 0
     softmax = torch.nn.Softmax(dim=1)
+
+    if args['--cuda'] == str(1):
+        softmax = softmax.cuda()
 
     while True:
         epoch += 1
@@ -157,8 +160,8 @@ def train(args):
                         print('load previously best model and decay learning rate to %f' %(lr), file=sys.stderr)
 
                         network.model = torch.load(model_path)
-                        if args['--cuda'] == True:
-                            network.model.cuda()
+                        if args['--cuda'] == str(1):
+                            network.model = network.model.cuda()
 
                         print('restore parameters of the optimizers', file=sys.stderr)
                         optimiser = torch.optim.Adam(list(network.model.parameters()), lr=lr)
@@ -192,9 +195,9 @@ def test(args):
         network = Model(args, vocab_data, 2)
         network.model = torch.load(model_path)
 
-    if args['--cuda'] == True:
-        network.model.cuda()
-        softmax.cuda()
+    if args['--cuda'] == str(1):
+        network.model = network.model.cuda()
+        softmax = softmax.cuda()
 
     network.model.eval()
     for labels, p1, p2, idx in utils.batch_iter(test_data, batch_size):
