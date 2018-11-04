@@ -63,43 +63,9 @@ class BiMPM(nn.Module):
         self.init_weights()
 
     def init_weights(self):
-        if self.char_use:
-            nn.init.uniform_(self.char_embedding.weight, -0.005, 0.005)
-            nn.init.xavier_normal_(self.char_lstm.weight_ih_l0)
-            nn.init.constant_(self.char_lstm.bias_ih_l0, val=0)
-            nn.init.orthogonal_(self.char_lstm.weight_hh_l0)
-            nn.init.constant_(self.char_lstm.bias_hh_l0, val=0)
-
-        nn.init.xavier_normal_(self.context_lstm.weight_ih_l0)
-        nn.init.constant_(self.context_lstm.bias_ih_l0, val=0)
-        nn.init.orthogonal_(self.context_lstm.weight_hh_l0)
-        nn.init.constant_(self.context_lstm.bias_hh_l0, val=0)
-
-        nn.init.xavier_normal_(self.context_lstm.weight_ih_l0_reverse)
-        nn.init.constant_(self.context_lstm.bias_ih_l0_reverse, val=0)
-        nn.init.orthogonal_(self.context_lstm.weight_hh_l0_reverse)
-        nn.init.constant_(self.context_lstm.bias_hh_l0_reverse, val=0)
-
-        for i in range(1, 9):
-            weight = getattr(self, f'w{i}')
-            nn.init.xavier_normal_(weight)
-
-        nn.init.xavier_normal_(self.aggregation_lstm.weight_ih_l0)
-        nn.init.constant_(self.aggregation_lstm.bias_ih_l0, val=0)
-        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0)
-        nn.init.constant_(self.aggregation_lstm.bias_hh_l0, val=0)
-
-        nn.init.xavier_normal_(self.aggregation_lstm.weight_ih_l0_reverse)
-        nn.init.constant_(self.aggregation_lstm.bias_ih_l0_reverse, val=0)
-        nn.init.orthogonal_(self.aggregation_lstm.weight_hh_l0_reverse)
-        nn.init.constant_(self.aggregation_lstm.bias_hh_l0_reverse, val=0)
-
-
-        nn.init.xavier_normal_(self.ff1.weight)
-        nn.init.constant_(self.ff1.bias, val=0)
-        nn.init.xavier_normal_(self.ff2.weight)
-        nn.init.constant_(self.ff2.bias, val=0)
-       
+        for param in list(self.parameters()):
+            nn.init.uniform_(param, -0.01, 0.01)
+ 
     def init_char_embed(self, c1, c2):
         c1_embed = self.char_embedding(c1)
         char_p1 = self.char_lstm(c1_embed)
@@ -171,7 +137,6 @@ class BiMPM(nn.Module):
         return result_match, result_max
 
     def forward(self, p1, p2, c1, c2, p1_len, p2_len):
-
         if self.char_use:
             char_p1, char_p2 = self.init_char_embed(c1, c2)
             dim1, dim2, _ = p1.size()

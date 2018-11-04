@@ -13,8 +13,8 @@ Usage:
 Options:
     -h --help                               show this screen.
     --cuda=<bool>                           use GPU [default: False]
-    --train-src=<file>                      train source file [default: ../data/quora/train.tsv]
-    --dev-src=<file>                        dev source file [default: ../data/quora/dev.tsv]
+    --train-src=<file>                      train source file [default: ../data/quora/train_small.tsv]
+    --dev-src=<file>                        dev source file [default: ../data/quora/dev_small.tsv]
     --test-src=<file>                       test source file [default: ../data/quora/test.tsv]
     --vocab-src=<file>                      vocab source file [default: ../data/quora/vocab.pkl]
     --model-path=<file>                     model path [default: ../data/models/model.bin]
