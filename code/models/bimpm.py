@@ -5,7 +5,7 @@ from pdb import set_trace as bp
 
 class BiMPM(nn.Module):
 
-    def __init__(self, args, vocab, class_size):
+    def __init__(self, args, vocab, class_size, wembeddings, word_vocab):
         super(BiMPM, self).__init__()
 
         self.c_embed_size = int(args['--char-embed-size'])
@@ -21,6 +21,10 @@ class BiMPM(nn.Module):
         self.classes = class_size
         self.char_use = args['--char']
 
+        self.wembeddings = nn.Embedding(num_embeddings=word_vocab,\
+                                        embedding_dim=self.w_embed_size)
+
+        self.wembeddings.weight.data.copy_(torch.from_numpy(wembeddings))
         self.dropout = nn.Dropout(self.dropout_val)
 
         if self.char_use:
@@ -137,21 +141,25 @@ class BiMPM(nn.Module):
         return result_match, result_max
 
     def forward(self, p1, p2, c1, c2, p1_len, p2_len):
+
+        p1_input = self.wembeddings(p1)
+        p2_input = self.wembeddings(p2)
+
         if self.char_use:
             char_p1, char_p2 = self.init_char_embed(c1, c2)
-            dim1, dim2, _ = p1.size()
+            dim1, dim2 = p1.size()
             char_p1 = char_p1.view(dim1, dim2, -1)
-            dim1, dim2, _ = p2.size()
+            dim1, dim2 = p2.size()
             char_p2 = char_p2.view(dim1, dim2, -1)
-            p1_input = torch.cat((p1, char_p1), 2)
-            p2_input = torch.cat((p2, char_p2), 2)
+            p1_input = torch.cat((p1_input, char_p1), 2)
+            p2_input = torch.cat((p2_input, char_p2), 2)
 
             context1_full, (context1_lh, _) = self.context_lstm(p1_input)
             context2_full, (context2_lh, _) = self.context_lstm(p2_input)
 
         else:
-            context1_full, (context1_lh, _) = self.context_lstm(p1)
-            context2_full, (context2_lh, _) = self.context_lstm(p2)
+            context1_full, (context1_lh, _) = self.context_lstm(p1_input)
+            context2_full, (context2_lh, _) = self.context_lstm(p2_input)
 
         context1_forw, context1_back = torch.split(context1_full, self.bi_hidden, 2)
         context1_lh_forw, context1_lh_back = context1_lh[0], context1_lh[1]
